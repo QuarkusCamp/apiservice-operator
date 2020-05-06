@@ -1,24 +1,24 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: api-service
+  name: apiservice-operator
 spec:
   replicas: 1
   selector:
     matchLabels:
-      name: api-service
+      name: apiservice-operator
   template:
     metadata:
       labels:
-        name: api-service
+        name: apiservice-operator
     spec:
-      serviceAccountName: api-service
+      serviceAccountName: apiservice-operator
       containers:
-        - name: api-service
+        - name: apiservice-operator
           # Replace this with the built image name
           image: quay.io/ligangty/apiservice-operator:latest
           command:
-          - api-service
+          - apiservice-operator
           imagePullPolicy: Always
           env:
             - name: WATCH_NAMESPACE
@@ -30,4 +30,4 @@ spec:
                 fieldRef:
                   fieldPath: metadata.name
             - name: OPERATOR_NAME
-              value: "api-service"
+              value: "apiservice-operator"
