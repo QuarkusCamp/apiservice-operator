@@ -8,7 +8,7 @@ metadata:
           "apiVersion": "apiservice.ligangty.github.com/v1alpha1",
           "kind": "ApiService",
           "metadata": {
-            "name": "example-apiservice"
+            "name": "api-service"
           },
           "spec": {
             "size": 3

@@ -1,7 +1,7 @@
 apiVersion: apiservice.ligangty.github.com/v1alpha1
 kind: ApiService
 metadata:
-  name: example-apiservice
+  name: api-service
 spec:
   # Add fields here
   size: 3
