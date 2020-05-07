@@ -30,9 +30,25 @@ spec:
           type: object
         spec:
           description: ApiServiceSpec defines the desired state of ApiService
+          properties:
+            size:
+              description: Size is the size of the memcached deployment
+              format: int32
+              type: integer
+          required:
+          - size
           type: object
         status:
           description: ApiServiceStatus defines the observed state of ApiService
+          properties:
+            nodes:
+              description: Nodes are the names of the memcached pods
+              items:
+                type: string
+              type: array
+              x-kubernetes-list-type: set
+          required:
+          - nodes
           type: object
       type: object
   version: v1alpha1

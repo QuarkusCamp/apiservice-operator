@@ -33,21 +33,21 @@ spec:
   install:
     spec:
       deployments:
-      - name: api-service
+      - name: apiservice-operator
         spec:
           replicas: 1
           selector:
             matchLabels:
-              name: api-service
+              name: apiservice-operator
           strategy: {}
           template:
             metadata:
               labels:
-                name: api-service
+                name: apiservice-operator
             spec:
               containers:
               - command:
-                - api-service
+                - apiservice-operator
                 env:
                 - name: WATCH_NAMESPACE
                   valueFrom:
@@ -58,12 +58,12 @@ spec:
                     fieldRef:
                       fieldPath: metadata.name
                 - name: OPERATOR_NAME
-                  value: api-service
+                  value: apiservice-operator
                 image: quay.io/ligangty/apiservice-operator:latest
                 imagePullPolicy: Always
-                name: api-service
+                name: apiservice-operator
                 resources: {}
-              serviceAccountName: api-service
+              serviceAccountName: apiservice-operator
       permissions:
       - rules:
         - apiGroups:
