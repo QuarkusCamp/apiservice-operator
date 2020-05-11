@@ -140,7 +140,7 @@ spec:
           - patch
           - update
           - watch
-        serviceAccountName: api-service
+        serviceAccountName: apiservice-operator
     strategy: deployment
   installModes:
   - supported: true
