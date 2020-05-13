@@ -19,6 +19,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
+
+	ocAppsv1 "github.com/openshift/api/apps/v1"
 )
 
 var log = logf.Log.WithName("controller_apiservice")
@@ -36,7 +38,11 @@ func Add(mgr manager.Manager) error {
 
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager) reconcile.Reconciler {
-	return &ReconcileApiService{client: mgr.GetClient(), scheme: mgr.GetScheme()}
+	return &ReconcileAPIService{
+		client:      mgr.GetClient(),
+		scheme:      mgr.GetScheme(),
+		isOpenShift: isOpenShift(mgr.GetConfig()),
+	}
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
@@ -85,14 +91,16 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 }
 
 // blank assignment to verify that ReconcileApiService implements reconcile.Reconciler
-var _ reconcile.Reconciler = &ReconcileApiService{}
+var _ reconcile.Reconciler = &ReconcileAPIService{}
 
-// ReconcileApiService reconciles a ApiService object
-type ReconcileApiService struct {
+// ReconcileAPIService reconciles a ApiService object
+type ReconcileAPIService struct {
 	// This client, initialized using mgr.Client() above, is a split client
 	// that reads objects from the cache and writes to the apiserver
 	client client.Client
 	scheme *runtime.Scheme
+
+	isOpenShift bool
 }
 
 // Reconcile reads that state of the cluster for a ApiService object and makes changes based on the state read
@@ -102,7 +110,7 @@ type ReconcileApiService struct {
 // Note:
 // The Controller will requeue the Request to be processed again if the returned error is non-nil or
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
-func (r *ReconcileApiService) Reconcile(request reconcile.Request) (reconcile.Result, error) {
+func (r *ReconcileAPIService) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
 	reqLogger.Info("Reconciling ApiService")
 
@@ -120,24 +128,46 @@ func (r *ReconcileApiService) Reconcile(request reconcile.Request) (reconcile.Re
 		return reconcile.Result{}, err
 	}
 
-	deployment := &appsv1.Deployment{}
-	err = r.client.Get(context.TODO(), types.NamespacedName{Name: apiService.Name, Namespace: apiService.Namespace}, deployment)
-	if err != nil {
-		// Define a new Deployment
-		dep := r.deploymentForApiService(apiService)
-		reqLogger.Info("Creating a new Deployment.", "Deployment.Namespace", dep.Namespace, "Deployment.Name", dep.Name)
-		err = r.client.Create(context.TODO(), dep)
+	if r.isOpenShift {
+		deploymentConfig := &ocAppsv1.DeploymentConfig{}
+		err = r.client.Get(context.TODO(), types.NamespacedName{Name: apiService.Name, Namespace: apiService.Namespace}, deploymentConfig)
 		if err != nil {
-			reqLogger.Error(err, "Failed to create new Deployment.", "Deployment.Namespace", dep.Namespace, "Deployment.Name", dep.Name)
+			// Define a new DeploymentConfig
+			dc := r.dcForAPIService(apiService)
+			reqLogger.Info("Creating a new DeploymentConfig.", "DeploymentConfig.Namespace", dc.Namespace, "DeploymentConfig.Name", dc.Name)
+			err = r.client.Create(context.TODO(), dc)
+			if err != nil {
+				reqLogger.Error(err, "Failed to create new DeploymentConfig.", "DeploymentConfig.Namespace", dc.Namespace, "Deployment.Name", dc.Name)
+				return reconcile.Result{}, err
+			}
+			// DeploymentConfig created successfully - return and requeue
+			// NOTE: that the requeue is made with the purpose to provide the deployment object for the next step to ensure the deployment size is the same as the spec.
+			// Also, you could GET the deployment object again instead of requeue if you wish. See more over it here: https://godoc.org/sigs.k8s.io/controller-runtime/pkg/reconcile#Reconciler
+			return reconcile.Result{Requeue: true}, nil
+		} else if err != nil {
+			reqLogger.Error(err, "Failed to get Deployment.")
 			return reconcile.Result{}, err
 		}
-		// Deployment created successfully - return and requeue
-		// NOTE: that the requeue is made with the purpose to provide the deployment object for the next step to ensure the deployment size is the same as the spec.
-		// Also, you could GET the deployment object again instead of requeue if you wish. See more over it here: https://godoc.org/sigs.k8s.io/controller-runtime/pkg/reconcile#Reconciler
-		return reconcile.Result{Requeue: true}, nil
-	} else if err != nil {
-		reqLogger.Error(err, "Failed to get Deployment.")
-		return reconcile.Result{}, err
+	} else {
+		deployment := &appsv1.Deployment{}
+		err = r.client.Get(context.TODO(), types.NamespacedName{Name: apiService.Name, Namespace: apiService.Namespace}, deployment)
+		if err != nil {
+			// Define a new Deployment
+			dep := r.deploymentForAPIService(apiService)
+			reqLogger.Info("Creating a new Deployment.", "Deployment.Namespace", dep.Namespace, "Deployment.Name", dep.Name)
+			err = r.client.Create(context.TODO(), dep)
+			if err != nil {
+				reqLogger.Error(err, "Failed to create new Deployment.", "Deployment.Namespace", dep.Namespace, "Deployment.Name", dep.Name)
+				return reconcile.Result{}, err
+			}
+			// Deployment created successfully - return and requeue
+			// NOTE: that the requeue is made with the purpose to provide the deployment object for the next step to ensure the deployment size is the same as the spec.
+			// Also, you could GET the deployment object again instead of requeue if you wish. See more over it here: https://godoc.org/sigs.k8s.io/controller-runtime/pkg/reconcile#Reconciler
+			return reconcile.Result{Requeue: true}, nil
+		} else if err != nil {
+			reqLogger.Error(err, "Failed to get Deployment.")
+			return reconcile.Result{}, err
+		}
 	}
 
 	// Check if the Service already exists, if not create a new one
@@ -146,7 +176,7 @@ func (r *ReconcileApiService) Reconcile(request reconcile.Request) (reconcile.Re
 	err = r.client.Get(context.TODO(), types.NamespacedName{Name: apiService.Name, Namespace: apiService.Namespace}, service)
 	if err != nil && errors.IsNotFound(err) {
 		// Define a new Service object
-		ser := r.serviceForApiService(apiService)
+		ser := r.serviceForAPIService(apiService)
 		reqLogger.Info("Creating a new Service.", "Service.Namespace", ser.Namespace, "Service.Name", ser.Name)
 		err = r.client.Create(context.TODO(), ser)
 		if err != nil {
@@ -163,7 +193,7 @@ func (r *ReconcileApiService) Reconcile(request reconcile.Request) (reconcile.Re
 	podList := &corev1.PodList{}
 	listOpts := []client.ListOption{
 		client.InNamespace(apiService.Namespace),
-		client.MatchingLabels(labelsForApiService(apiService.Name)),
+		client.MatchingLabels(labelsForAPIService(apiService.Name)),
 	}
 	err = r.client.List(context.TODO(), podList, listOpts...)
 	if err != nil {
@@ -185,8 +215,8 @@ func (r *ReconcileApiService) Reconcile(request reconcile.Request) (reconcile.Re
 	return reconcile.Result{}, nil
 }
 
-func (r *ReconcileApiService) deploymentForApiService(m *apiservicev1alpha1.ApiService) *appsv1.Deployment {
-	ls := labelsForApiService(m.Name)
+func (r *ReconcileAPIService) deploymentForAPIService(m *apiservicev1alpha1.ApiService) *appsv1.Deployment {
+	ls := labelsForAPIService(m.Name)
 	replicas := m.Spec.Size
 
 	dep := &appsv1.Deployment{
@@ -223,9 +253,44 @@ func (r *ReconcileApiService) deploymentForApiService(m *apiservicev1alpha1.ApiS
 
 }
 
-// serviceForApiService function takes in a ApiService object and returns a Service for that object.
-func (r *ReconcileApiService) serviceForApiService(m *apiservicev1alpha1.ApiService) *corev1.Service {
-	ls := labelsForApiService(m.Name)
+func (r *ReconcileAPIService) dcForAPIService(m *apiservicev1alpha1.ApiService) *ocAppsv1.DeploymentConfig {
+	ls := labelsForAPIService(m.Name)
+	replicas := m.Spec.Size
+
+	dc := &ocAppsv1.DeploymentConfig{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      m.Name,
+			Namespace: m.Namespace,
+		},
+		Spec: ocAppsv1.DeploymentConfigSpec{
+			Replicas: replicas,
+			Selector: ls,
+			Template: &corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: ls,
+				},
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{{
+						Image:   "quay.io/ligangty/test-api:latest",
+						Name:    "api-service",
+						Command: []string{"api-server"},
+						Ports: []corev1.ContainerPort{{
+							ContainerPort: 8080,
+							Name:          "api-service",
+						}},
+					}},
+				},
+			},
+		},
+	}
+	// Set ApiService instance as the owner of the DeploymentConfig.
+	controllerutil.SetControllerReference(m, dc, r.scheme)
+	return dc
+}
+
+// serviceForAPIService function takes in a ApiService object and returns a Service for that object.
+func (r *ReconcileAPIService) serviceForAPIService(m *apiservicev1alpha1.ApiService) *corev1.Service {
+	ls := labelsForAPIService(m.Name)
 	ser := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      m.Name,
@@ -246,9 +311,9 @@ func (r *ReconcileApiService) serviceForApiService(m *apiservicev1alpha1.ApiServ
 	return ser
 }
 
-// labelsForApiService returns the labels for selecting the resources
+// labelsForAPIService returns the labels for selecting the resources
 // belonging to the given apiService CR name.
-func labelsForApiService(name string) map[string]string {
+func labelsForAPIService(name string) map[string]string {
 	return map[string]string{"app": "apiservice", "apiservice_cr": name}
 }
 
