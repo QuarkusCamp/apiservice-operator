@@ -5,8 +5,8 @@ metadata:
 spec:
   group: apiservice.ligangty.github.com
   names:
-    kind: ApiService
-    listKind: ApiServiceList
+    kind: APIService
+    listKind: APIServiceList
     plural: apiservices
     singular: apiservice
   scope: Namespaced
@@ -14,7 +14,7 @@ spec:
     status: {}
   validation:
     openAPIV3Schema:
-      description: ApiService is the Schema for the apiservices API
+      description: APIService is the Schema for the apiservices API
       properties:
         apiVersion:
           description: 'APIVersion defines the versioned schema of this representation
@@ -29,7 +29,7 @@ spec:
         metadata:
           type: object
         spec:
-          description: ApiServiceSpec defines the desired state of ApiService
+          description: APIServiceSpec defines the desired state of APIService
           properties:
             size:
               description: Size is the size of the memcached deployment
@@ -39,7 +39,7 @@ spec:
           - size
           type: object
         status:
-          description: ApiServiceStatus defines the observed state of ApiService
+          description: APIServiceStatus defines the observed state of APIService
           properties:
             nodes:
               description: Nodes are the names of the memcached pods

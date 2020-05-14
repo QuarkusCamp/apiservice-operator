@@ -6,7 +6,7 @@ metadata:
       [
         {
           "apiVersion": "apiservice.ligangty.github.com/v1alpha1",
-          "kind": "ApiService",
+          "kind": "APIService",
           "metadata": {
             "name": "api-service"
           },
@@ -22,8 +22,8 @@ spec:
   apiservicedefinitions: {}
   customresourcedefinitions:
     owned:
-    - description: ApiService is the Schema for the apiservices API
-      kind: ApiService
+    - description: APIService is the Schema for the apiservices API
+      kind: APIService
       name: apiservices.apiservice.ligangty.github.com
       version: v1alpha1
   displayName: Api Service

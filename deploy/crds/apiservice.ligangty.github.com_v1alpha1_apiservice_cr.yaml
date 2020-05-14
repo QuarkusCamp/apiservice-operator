@@ -1,5 +1,5 @@
 apiVersion: apiservice.ligangty.github.com/v1alpha1
-kind: ApiService
+kind: APIService
 metadata:
   name: api-service
 spec:

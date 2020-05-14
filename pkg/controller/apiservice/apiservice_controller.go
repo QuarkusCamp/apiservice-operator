@@ -28,7 +28,7 @@ var log = logf.Log.WithName("controller_apiservice")
 * business logic.  Delete these comments after modifying this file.*
  */
 
-// Add creates a new ApiService Controller and adds it to the Manager. The Manager will set fields on the Controller
+// Add creates a new APIService Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager) error {
 	return add(mgr, newReconciler(mgr))
@@ -36,7 +36,7 @@ func Add(mgr manager.Manager) error {
 
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager) reconcile.Reconciler {
-	return &ReconcileApiService{client: mgr.GetClient(), scheme: mgr.GetScheme()}
+	return &ReconcileAPIService{client: mgr.GetClient(), scheme: mgr.GetScheme()}
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
@@ -47,27 +47,27 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		return err
 	}
 
-	// Watch for changes to primary resource ApiService
-	err = c.Watch(&source.Kind{Type: &apiservicev1alpha1.ApiService{}}, &handler.EnqueueRequestForObject{})
+	// Watch for changes to primary resource APIService
+	err = c.Watch(&source.Kind{Type: &apiservicev1alpha1.APIService{}}, &handler.EnqueueRequestForObject{})
 	if err != nil {
 		return err
 	}
 
 	// TODO(user): Modify this to be the types you create that are owned by the primary resource
-	// Watch for changes to secondary resource Pods and requeue the owner ApiService
+	// Watch for changes to secondary resource Pods and requeue the owner APIService
 	// err = c.Watch(&source.Kind{Type: &corev1.Pod{}}, &handler.EnqueueRequestForOwner{
 	// 	IsController: true,
-	// 	OwnerType:    &apiservicev1alpha1.ApiService{},
+	// 	OwnerType:    &apiservicev1alpha1.APIService{},
 	// })
 	// if err != nil {
 	// 	return err
 	// }
 
 	// TODO(user): Modify this to be the types you create that are owned by the primary resource
-	// Watch for changes to secondary resource Pods and requeue the owner ApiService
+	// Watch for changes to secondary resource Pods and requeue the owner APIService
 	err = c.Watch(&source.Kind{Type: &appsv1.Deployment{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
-		OwnerType:    &apiservicev1alpha1.ApiService{},
+		OwnerType:    &apiservicev1alpha1.APIService{},
 	})
 	if err != nil {
 		return err
@@ -75,7 +75,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 
 	err = c.Watch(&source.Kind{Type: &corev1.Service{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
-		OwnerType:    &apiservicev1alpha1.ApiService{},
+		OwnerType:    &apiservicev1alpha1.APIService{},
 	})
 	if err != nil {
 		return err
@@ -84,30 +84,30 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	return nil
 }
 
-// blank assignment to verify that ReconcileApiService implements reconcile.Reconciler
-var _ reconcile.Reconciler = &ReconcileApiService{}
+// blank assignment to verify that ReconcileAPIService implements reconcile.Reconciler
+var _ reconcile.Reconciler = &ReconcileAPIService{}
 
-// ReconcileApiService reconciles a ApiService object
-type ReconcileApiService struct {
+// ReconcileAPIService reconciles a APIService object
+type ReconcileAPIService struct {
 	// This client, initialized using mgr.Client() above, is a split client
 	// that reads objects from the cache and writes to the apiserver
 	client client.Client
 	scheme *runtime.Scheme
 }
 
-// Reconcile reads that state of the cluster for a ApiService object and makes changes based on the state read
-// and what is in the ApiService.Spec
+// Reconcile reads that state of the cluster for a APIService object and makes changes based on the state read
+// and what is in the APIService.Spec
 // TODO(user): Modify this Reconcile function to implement your Controller logic.  This example creates
 // a Pod as an example
 // Note:
 // The Controller will requeue the Request to be processed again if the returned error is non-nil or
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
-func (r *ReconcileApiService) Reconcile(request reconcile.Request) (reconcile.Result, error) {
+func (r *ReconcileAPIService) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
-	reqLogger.Info("Reconciling ApiService")
+	reqLogger.Info("Reconciling APIService")
 
-	// Fetch the ApiService instance
-	apiService := &apiservicev1alpha1.ApiService{}
+	// Fetch the APIService instance
+	apiService := &apiservicev1alpha1.APIService{}
 	err := r.client.Get(context.TODO(), request.NamespacedName, apiService)
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -124,7 +124,7 @@ func (r *ReconcileApiService) Reconcile(request reconcile.Request) (reconcile.Re
 	err = r.client.Get(context.TODO(), types.NamespacedName{Name: apiService.Name, Namespace: apiService.Namespace}, deployment)
 	if err != nil {
 		// Define a new Deployment
-		dep := r.deploymentForApiService(apiService)
+		dep := r.deploymentForAPIService(apiService)
 		reqLogger.Info("Creating a new Deployment.", "Deployment.Namespace", dep.Namespace, "Deployment.Name", dep.Name)
 		err = r.client.Create(context.TODO(), dep)
 		if err != nil {
@@ -146,7 +146,7 @@ func (r *ReconcileApiService) Reconcile(request reconcile.Request) (reconcile.Re
 	err = r.client.Get(context.TODO(), types.NamespacedName{Name: apiService.Name, Namespace: apiService.Namespace}, service)
 	if err != nil && errors.IsNotFound(err) {
 		// Define a new Service object
-		ser := r.serviceForApiService(apiService)
+		ser := r.serviceForAPIService(apiService)
 		reqLogger.Info("Creating a new Service.", "Service.Namespace", ser.Namespace, "Service.Name", ser.Name)
 		err = r.client.Create(context.TODO(), ser)
 		if err != nil {
@@ -158,16 +158,16 @@ func (r *ReconcileApiService) Reconcile(request reconcile.Request) (reconcile.Re
 		return reconcile.Result{}, err
 	}
 
-	// Update the ApiService status with the pod names
+	// Update the APIService status with the pod names
 	// List the pods for this apiService's deployment
 	podList := &corev1.PodList{}
 	listOpts := []client.ListOption{
 		client.InNamespace(apiService.Namespace),
-		client.MatchingLabels(labelsForApiService(apiService.Name)),
+		client.MatchingLabels(labelsForAPIService(apiService.Name)),
 	}
 	err = r.client.List(context.TODO(), podList, listOpts...)
 	if err != nil {
-		reqLogger.Error(err, "Failed to list pods.", "ApiService.Namespace", apiService.Namespace, "ApiService.Name", apiService.Name)
+		reqLogger.Error(err, "Failed to list pods.", "APIService.Namespace", apiService.Namespace, "APIService.Name", apiService.Name)
 		return reconcile.Result{}, err
 	}
 	podNames := getPodNames(podList.Items)
@@ -177,7 +177,7 @@ func (r *ReconcileApiService) Reconcile(request reconcile.Request) (reconcile.Re
 		apiService.Status.Nodes = podNames
 		err := r.client.Status().Update(context.TODO(), apiService)
 		if err != nil {
-			reqLogger.Error(err, "Failed to update ApiService status.")
+			reqLogger.Error(err, "Failed to update APIService status.")
 			return reconcile.Result{}, err
 		}
 	}
@@ -185,8 +185,8 @@ func (r *ReconcileApiService) Reconcile(request reconcile.Request) (reconcile.Re
 	return reconcile.Result{}, nil
 }
 
-func (r *ReconcileApiService) deploymentForApiService(m *apiservicev1alpha1.ApiService) *appsv1.Deployment {
-	ls := labelsForApiService(m.Name)
+func (r *ReconcileAPIService) deploymentForAPIService(m *apiservicev1alpha1.APIService) *appsv1.Deployment {
+	ls := labelsForAPIService(m.Name)
 	replicas := m.Spec.Size
 
 	dep := &appsv1.Deployment{
@@ -217,15 +217,15 @@ func (r *ReconcileApiService) deploymentForApiService(m *apiservicev1alpha1.ApiS
 			},
 		},
 	}
-	// Set ApiService instance as the owner of the Deployment.
+	// Set APIService instance as the owner of the Deployment.
 	controllerutil.SetControllerReference(m, dep, r.scheme)
 	return dep
 
 }
 
-// serviceForApiService function takes in a ApiService object and returns a Service for that object.
-func (r *ReconcileApiService) serviceForApiService(m *apiservicev1alpha1.ApiService) *corev1.Service {
-	ls := labelsForApiService(m.Name)
+// serviceForAPIService function takes in a APIService object and returns a Service for that object.
+func (r *ReconcileAPIService) serviceForAPIService(m *apiservicev1alpha1.APIService) *corev1.Service {
+	ls := labelsForAPIService(m.Name)
 	ser := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      m.Name,
@@ -241,14 +241,14 @@ func (r *ReconcileApiService) serviceForApiService(m *apiservicev1alpha1.ApiServ
 			},
 		},
 	}
-	// Set ApiService instance as the owner of the Service.
+	// Set APIService instance as the owner of the Service.
 	controllerutil.SetControllerReference(m, ser, r.scheme)
 	return ser
 }
 
-// labelsForApiService returns the labels for selecting the resources
+// labelsForAPIService returns the labels for selecting the resources
 // belonging to the given apiService CR name.
-func labelsForApiService(name string) map[string]string {
+func labelsForAPIService(name string) map[string]string {
 	return map[string]string{"app": "apiservice", "apiservice_cr": name}
 }
 
