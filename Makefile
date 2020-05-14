@@ -33,6 +33,10 @@ uninstall: ## Uninstall all that all performed in the $ make install
 #	- oc delete namespace ${NAMESPACE}
 	- oc delete project ${NAMESPACE}
 
+reinstall: ## Uninstall and install resoruces again
+	- make uninstall
+	- make install
+
 ##@ Development
 
 code-vet: ## Run go vet for this project. More info: https://golang.org/cmd/vet/
