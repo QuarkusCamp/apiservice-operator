@@ -188,7 +188,28 @@ func (r *ReconcileAPIService) Reconcile(request reconcile.Request) (reconcile.Re
 func (r *ReconcileAPIService) deploymentForAPIService(m *apiservicev1alpha1.APIService) *appsv1.Deployment {
 	ls := labelsForAPIService(m.Name)
 	replicas := m.Spec.Size
+	configmap := m.Spec.ConfigMap
+	volumes := []corev1.Volume{}
+	volumeMounts := []corev1.VolumeMount{}
+	if configmap != "" {
+		volumes = append(volumes, corev1.Volume{
+			Name: "api-service-volume",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: configmap,
+					},
+				},
+			},
+		})
 
+		volumeMounts = append(volumeMounts, corev1.VolumeMount{
+			Name:      "api-service-volume",
+			MountPath: "/opt/mnt/api-service/output.txt",
+			ReadOnly:  true,
+			SubPath:   "output.txt",
+		})
+	}
 	dep := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      m.Name,
@@ -204,10 +225,12 @@ func (r *ReconcileAPIService) deploymentForAPIService(m *apiservicev1alpha1.APIS
 					Labels: ls,
 				},
 				Spec: corev1.PodSpec{
+					Volumes: volumes,
 					Containers: []corev1.Container{{
-						Image:   "quay.io/ligangty/test-api:latest",
-						Name:    "api-service",
-						Command: []string{"api-server"},
+						Image:        "quay.io/ligangty/test-api:latest",
+						Name:         "api-service",
+						Command:      []string{"api-server"},
+						VolumeMounts: volumeMounts,
 						Ports: []corev1.ContainerPort{{
 							ContainerPort: 8080,
 							Name:          "api-service",

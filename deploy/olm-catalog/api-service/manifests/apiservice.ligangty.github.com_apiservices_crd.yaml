@@ -31,11 +31,16 @@ spec:
         spec:
           description: APIServiceSpec defines the desired state of APIService
           properties:
+            config-map:
+              description: ConfigMap is the the config map name to retrieve message
+                body
+              type: string
             size:
               description: Size is the size of the memcached deployment
               format: int32
               type: integer
           required:
+          - config-map
           - size
           type: object
         status:

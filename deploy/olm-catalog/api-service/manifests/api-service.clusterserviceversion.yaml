@@ -11,6 +11,7 @@ metadata:
             "name": "api-service"
           },
           "spec": {
+            "config-map": "api-service-config",
             "size": 3
           }
         }

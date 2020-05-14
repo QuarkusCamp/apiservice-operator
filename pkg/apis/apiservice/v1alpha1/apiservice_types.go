@@ -17,7 +17,7 @@ type APIServiceSpec struct {
 	Size int32 `json:"size"`
 
 	// ConfigMap is the the config map name to retrieve message body
-	// ConfigMap string `json:"config-map"`
+	ConfigMap string `json:"config-map"`
 }
 
 // APIServiceStatus defines the observed state of APIService
